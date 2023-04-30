@@ -28,7 +28,7 @@ def load_sprite_sheets(first_direction, second_direction, width, height, directi
 
         sprites = []
         for i in range(sprite_sheet.get_width() // width):
-            surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
+            surface = pygame.Surface((width, height), pygame.SRCALPHA, var.DEPTH)
             rect = pygame.Rect(i * width, 0, width, height)
             surface.blit(sprite_sheet, (0, 0), rect)
             sprites.append(pygame.transform.scale2x(surface))
@@ -42,14 +42,24 @@ def load_sprite_sheets(first_direction, second_direction, width, height, directi
     return all_sprites
 
 
+def get_block(size):
+    path = join(var.ASSETS_FOLDER_NAME, var.TERRAIN, var.TERRAIN_PNG)
+    image = pygame.image.load(path).convert_alpha()
+    surface = pygame.Surface((size, size), pygame.SRCALPHA, var.DEPTH)
+    rect = pygame.Rect(96, 0, size, size)
+    surface.blit(image, (0, 0), rect)
+    return pygame.transform.scale2x(surface)
+
+
 # creating the player
 class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
-    SPRITES = load_sprite_sheets(var.MAIN_CHARACTER_FOLDER_NAME, var.MASK_DUDE_HERO, 32, 32, True)
+    SPRITES = load_sprite_sheets(var.MAIN_CHARACTER_FOLDER_NAME, var.MASK_DUDE_HERO, var.DEPTH, var.DEPTH, True)
     ANIMATION_DELAY = 4
 
     def __init__(self, x, y, width, height):
+        super().__init__()
         self.rect = pygame.Rect(x, y, width, height)
         self.x_velocity = 0
         self.y_velocity = 0
@@ -91,7 +101,7 @@ class Player(pygame.sprite.Sprite):
         sprite_sheet_name = sprite_sheet + "_" + self.direction
         sprites = self.SPRITES[sprite_sheet_name]
 
-        # below I'm trying to pick a new index of every animation frames from our sprites dynamically
+        # picking a new index of every animation frames from our sprites dynamically
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
         self.sprite = sprites[sprite_index]
         self.animation_count += 1
@@ -105,6 +115,29 @@ class Player(pygame.sprite.Sprite):
 
     def draw(self, window):
         window.blit(self.sprite, (self.rect.x, self.rect.y))
+
+
+# generating objects on the map
+class Object(pygame.sprite.Sprite):
+    def __init__(self, x, y, width, height, name=None):
+        super().__init__()
+        self.rect = pygame.Rect(x, y, width, height)
+        self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+        self.width = width
+        self.height = height
+        self.name = name
+
+    def draw(self, window):
+        window.blit(self.image, (self.rect.x, self.rect.y))
+
+
+# inhering from Object class
+class Block(Object):
+    def __init__(self, x, y, size):
+        super().__init__(x, y, size, size)
+        block = get_block(size)
+        self.image.blit(block, (0, 0))
+        self.mask = pygame.mask.from_surface(self.image)
 
 
 # generating the background
@@ -122,10 +155,14 @@ def generate_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player):
+def draw(window, background, bg_image, player, objects):
     # drawing each tile by using its position from list of tuples 'background' including positions
     for tile in background:
         window.blit(bg_image, tile)
+
+    # drawing objects from terrain folder
+    for obj in objects:
+        obj.draw(window)
 
     player.draw(window)
 
@@ -146,10 +183,14 @@ def handle_move(player):
 
 def main(window):
     clock = pygame.time.Clock()
-    random_image_id = random.randint(0, len(var.ARRAY_OF_ALL_BG_TILES)-1)
+    random_image_id = random.randint(0, len(var.ARRAY_OF_ALL_BG_TILES) - 1)
     background, bg_image = generate_background(var.ARRAY_OF_ALL_BG_TILES[random_image_id])
 
     player = Player(100, 100, 50, 50)
+
+    # creating random amount of blocks
+    blocks_floor = [Block(x_scale, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
+                    for x_scale in [x * var.BLOCK_SIZE for x in range(random.randint(20, 50))]]
 
     run = True
     while run:
@@ -163,7 +204,7 @@ def main(window):
 
         player.loop(var.FPS)
         handle_move(player)
-        draw(window, background, bg_image, player)
+        draw(window, background, bg_image, player, blocks_floor)
     pygame.quit()
     quit()
 
