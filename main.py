@@ -71,6 +71,13 @@ class Player(pygame.sprite.Sprite):
         self.hit = False
         self.hit_count = 0
 
+    def jump(self):
+        self.y_velocity = -self.GRAVITY * 8
+        self.animation_count = 0
+        self.jump_count += 1
+        if self.jump_count == 1:
+            self.fall_count = 0
+
     def move(self, dx, dy):
         self.rect.x += dx
         self.rect.y += dy
@@ -109,7 +116,15 @@ class Player(pygame.sprite.Sprite):
     # Creating animation
     def update_sprite(self):
         sprite_sheet = "idle"
-        if self.x_velocity != 0:
+
+        if self.y_velocity < 0:
+            if self.jump_count == 1:
+                sprite_sheet = "jump"
+            elif self.jump_count == 2:
+                sprite_sheet = "double_jump"
+        elif self.y_velocity > self.GRAVITY * 2:
+            sprite_sheet = "fall"
+        elif self.x_velocity != 0:
             sprite_sheet = "run"
 
         sprite_sheet_name = sprite_sheet + "_" + self.direction
@@ -218,10 +233,6 @@ def main(window):
     player = Player(100, 100, 50, 50)
 
     # creating random amount of blocks
-    # blocks_floor = [Block(x_scale, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
-    #                 for x_scale in [x * var.BLOCK_SIZE for x in range(random.randint(20, 50))]]
-    #
-
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
 
@@ -234,6 +245,11 @@ def main(window):
             if event.type == pygame.QUIT:
                 run = False
                 break
+
+            # double hero jumping realisation
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and player.jump_count < 3:
+                    player.jump()
 
         player.loop(var.FPS)
         handle_move(player, blocks_floor)
