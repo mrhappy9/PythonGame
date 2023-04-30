@@ -16,6 +16,7 @@ window = pygame.display.set_mode((var.WIDTH, var.HEIGHT))
 # creating the player
 class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
+    GRAVITY = 1
 
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
@@ -24,6 +25,7 @@ class Player(pygame.sprite.Sprite):
         self.mask = None
         self.direction = "left"
         self.animation_count = 0
+        self.fall_count = 0
 
     def move(self, dx, dy):
         self.rect.x += dx
@@ -42,7 +44,11 @@ class Player(pygame.sprite.Sprite):
             self.animation_count = 0
 
     def loop(self, fps):
+        # define the acceleration by using fall_count and Gravity value
+        self.y_velocity += min(1, (self.fall_count / fps) * self.GRAVITY)
         self.move(self.x_velocity, self.y_velocity)
+
+        self.fall_count += 1
 
     def draw(self, window):
         pygame.draw.rect(window, self.COLOR, self.rect)
@@ -73,6 +79,18 @@ def draw(window, background, bg_image, player):
     pygame.display.update()
 
 
+def handle_move(player):
+    keys = pygame.key.get_pressed()
+
+    player.x_velocity = 0
+    player.y_velocity = 0
+
+    if keys[pygame.K_LEFT]:
+        player.move_left(var.PLAYER_VELOCITY)
+    if keys[pygame.K_RIGHT]:
+        player.move_right(var.PLAYER_VELOCITY)
+
+
 def main(window):
     clock = pygame.time.Clock()
     random_image_id = random.randint(0, len(var.ARRAY_OF_ALL_BG_TILES)-1)
@@ -90,6 +108,8 @@ def main(window):
                 run = False
                 break
 
+        player.loop(var.FPS)
+        handle_move(player)
         draw(window, background, bg_image, player)
     pygame.quit()
     quit()
