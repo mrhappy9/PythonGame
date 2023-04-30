@@ -47,6 +47,7 @@ class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
     SPRITES = load_sprite_sheets(var.MAIN_CHARACTER_FOLDER_NAME, var.MASK_DUDE_HERO, 32, 32, True)
+    ANIMATION_DELAY = 4
 
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
@@ -79,9 +80,30 @@ class Player(pygame.sprite.Sprite):
         self.move(self.x_velocity, self.y_velocity)
 
         self.fall_count += 1
+        self.update_sprite()
+
+    # Creating animation
+    def update_sprite(self):
+        sprite_sheet = "idle"
+        if self.x_velocity != 0:
+            sprite_sheet = "run"
+
+        sprite_sheet_name = sprite_sheet + "_" + self.direction
+        sprites = self.SPRITES[sprite_sheet_name]
+
+        # below I'm trying to pick a new index of every animation frames from our sprites dynamically
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
+        self.sprite = sprites[sprite_index]
+        self.animation_count += 1
+        self.update()
+
+    # update the rectangle that bounds our character based on the sprite
+    def update(self):
+        self.rect = self.sprite.get_rect(topleft=(self.rect.x, self.rect.y))
+        # mask is mapping of all of the pixels that exist in the Sprite
+        self.mask = pygame.mask.from_surface(self.sprite)
 
     def draw(self, window):
-        self.sprite = self.SPRITES["idle_" + self.direction][0]
         window.blit(self.sprite, (self.rect.x, self.rect.y))
 
 
