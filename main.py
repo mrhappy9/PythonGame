@@ -1,8 +1,5 @@
-import os
 import random
-import math
 import pygame
-import numpy as np
 import variables as var
 from os import listdir
 from os.path import isfile, join
@@ -107,6 +104,9 @@ class Player(pygame.sprite.Sprite):
             self.collect_fruit[str(collided_object.fruit_name)] += 1
         else:
             self.collect_fruit[str(collided_object.fruit_name)] = 1
+
+    def enemy_damage(self):
+        self.hp_count -= var.MONSTER_DAMAGE
 
     def move(self, dx, dy):
         self.rect.x += dx
@@ -248,6 +248,44 @@ class Fire(Object):
             self.animation_count = 0
 
 
+# creating Enemy class inhering from Object
+class Enemy(Object):
+    def __init__(self, x, y, width, height, enemy_name="monster"):
+        super().__init__(x, y, width, height, var.MONSTER_OBJECT_NAME)
+        self.enemy = load_sprite_sheets(var.ENEMIES_FOLDER_NAME, var.CYCLOPS_FOLDER_NAME, width, height)
+        self.image = self.enemy[enemy_name][0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.enemy_name = enemy_name
+
+    def move_up(self, dy):
+        self.rect.y -= dy
+
+    def move_left(self, dx):
+        self.rect.x += dx
+
+    def move_down(self, dy):
+        self.rect.y += dy
+
+    def move_right(self, dx):
+        self.rect.x -= dx
+
+    def move(self, ratio, side):
+        if side == var.MONSTER_UP:
+            self.move_up(ratio)
+        elif side == var.MONSTER_LEFT:
+            self.move_left(ratio)
+        elif side == var.MONSTER_RIGHT:
+            self.move_right(ratio)
+        elif side == var.MONSTER_DOWN:
+            self.move_down(ratio)
+
+    def loop(self, side):
+        self.move(var.MONSTER_SPEED, side)
+        # picking a new index of every animation frames from our sprites dynamically
+        self.rect = self.image.get_rect(topleft=(self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.image)
+
+
 # creating Fruit class inhering from Object
 class Fruit(Object):
     ANIMATION_DELAY = 3
@@ -362,6 +400,11 @@ def handle_move(player, objects_blocks):
             player.store_fruit(obj)
             if obj in objects_blocks:
                 objects_blocks.remove(obj)
+        if obj and obj.name == var.MONSTER_OBJECT_NAME:
+            # handle fight with monster
+            player.enemy_damage()
+            if obj in objects_blocks:
+                objects_blocks.remove(obj)
     return objects_blocks
 
 
@@ -372,7 +415,7 @@ def main(window):
 
     player = Player(100, 100, 50, 50)
     fire = Fire(100, var.HEIGHT - var.BLOCK_SIZE - 64, 16, 32)
-    apple_fruit = Fruit(150, var.HEIGHT - var.BLOCK_SIZE - 64, 32, 32, "Kiwi")
+    enemy = Enemy(200, var.HEIGHT - var.BLOCK_SIZE - 64, 32, 32)
 
     # creating blocks for vertical collision
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
@@ -387,6 +430,10 @@ def main(window):
                           var.ARRAY_OF_ALL_FRUITS[random.randint(0, len(var.ARRAY_OF_ALL_FRUITS) - 1)])
                     for x in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 3)]
 
+    # creating enemy blocks
+    enemy_blocks = [Enemy(x * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE - random.randint(100, 600), 32, 32)
+                    for x in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 7)]
+
     # creating blocks for horizontal collision
     random_block = [Block(i * var.BLOCK_SIZE, random.randint(200, 400), var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 4)]
@@ -395,10 +442,12 @@ def main(window):
 
     # list with blocks for horizontal and vertical collision
     objects_blocks = [*blocks_floor, *random_block, *random_block_second, fire, *fire_blocks,
-                      *fruit_blocks]
+                      *fruit_blocks, *enemy_blocks]
 
     offset_x = 0
     scroll_area_width = 400
+
+    side_going_monster = 0
 
     run = True
     while run:
@@ -416,14 +465,14 @@ def main(window):
                     player.jump()
                 if event.key == pygame.K_a and player.acceleration_count < 2:
                     player.acceleration()
-            # if keys[pygame.K_a]:
-            #     player.acceleration(var.ACCELERATION_VELOCITY_RATIO)
 
         player.loop(var.FPS)
         for fire in fire_blocks:
             fire.loop()
         for fruit in fruit_blocks:
             fruit.loop()
+        for enemy in enemy_blocks:
+            enemy.loop(var.ARRAY_OF_MONSTER_GOING[side_going_monster])
 
         objects_blocks = handle_move(player, objects_blocks)
         draw(window, background, bg_image, player, objects_blocks, offset_x)
@@ -435,6 +484,10 @@ def main(window):
                 offset_x += player.x_velocity
             else:
                 offset_x += player.x_velocity * var.ACCELERATION_VELOCITY_RATIO
+
+        side_going_monster += 1
+        if side_going_monster > 3:
+            side_going_monster = 0
 
     pygame.quit()
     quit()

@@ -5,9 +5,12 @@ PLAYER_VELOCITY = 5
 DEPTH = 32
 BLOCK_SIZE = 96
 ACCELERATION_VELOCITY_RATIO = 10
+MONSTER_SPEED = 20
+MONSTER_DAMAGE = 70
 
 ARRAY_OF_ALL_BG_TILES = ["Blue.png", "Brown.png", "Gray.png", "Pink.png",
                          "Purple.png", "Yellow.png"]
+
 ASSETS_FOLDER_NAME = "assets"
 BACKGROUND_FOLDER_NAME = "Background"
 MAIN_CHARACTER_FOLDER_NAME = "MainCharacters"
@@ -15,6 +18,8 @@ TRAPS_FOLDER_NAME = "Traps"
 ITEMS_FOLDER_NAME = "Items"
 FIRE_FOLDER_NAME = "Fire"
 FRUIT_FOLDER_NAME = "Fruits"
+ENEMIES_FOLDER_NAME = "Enemies"
+CYCLOPS_FOLDER_NAME = "Cyclops"
 
 MASK_DUDE_HERO = "MaskDude"
 NINJA_FROG_HERO = "NinjaFrog"
@@ -24,5 +29,13 @@ TERRAIN_PNG = "Terrain.png"
 
 FIRE_OBJECT_NAME = "fire"
 FRUIT_OBJECT_NAME = "fruit"
+MONSTER_OBJECT_NAME = "monster"
 
 ARRAY_OF_ALL_FRUITS = ["Apple", "Bananas", "Cherries", "Kiwi", "Melon", "Orange", "Pineapple", "Strawberry"]
+
+MONSTER_UP = "up"
+MONSTER_LEFT = "left"
+MONSTER_RIGHT = "right"
+MONSTER_DOWN = "down"
+
+ARRAY_OF_MONSTER_GOING = [MONSTER_UP, MONSTER_LEFT, MONSTER_RIGHT, MONSTER_DOWN]
