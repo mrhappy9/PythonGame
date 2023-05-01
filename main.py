@@ -79,6 +79,10 @@ class Player(pygame.sprite.Sprite):
         if self.jump_count == 1:
             self.fall_count = 0
 
+    def make_hit(self):
+        self.hit = True
+        self.hit_count = 0
+
     def move(self, dx, dy):
         self.rect.x += dx
         self.rect.y += dy
@@ -105,6 +109,12 @@ class Player(pygame.sprite.Sprite):
         self.y_velocity += min(1, (self.fall_count / fps) * self.GRAVITY)
         self.move(self.x_velocity, self.y_velocity)
 
+        if self.hit:
+            self.hit_count += 1
+        if self.hit_count > var.FPS * 2:
+            self.hit = False
+            self.hit_count = 0
+
         self.fall_count += 1
         self.update_sprite()
 
@@ -124,7 +134,9 @@ class Player(pygame.sprite.Sprite):
     def update_sprite(self):
         sprite_sheet = "idle"
 
-        if self.y_velocity < 0:
+        if self.hit:
+            sprite_sheet = "hit"
+        elif self.y_velocity < 0:
             if self.jump_count == 1:
                 sprite_sheet = "jump"
             elif self.jump_count == 2:
@@ -202,7 +214,6 @@ class Fire(Object):
         self.image = sprites[sprite_index]
         self.animation_count += 1
         self.rect = self.image.get_rect(topleft=(self.rect.x, self.rect.y))
-        # mask is mapping of all of the pixels that exist in the Sprite
         self.mask = pygame.mask.from_surface(self.image)
 
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
@@ -278,14 +289,18 @@ def handle_move(player, objects):
 
     player.x_velocity = 0
     collide_left = handle_horizontal_collision(player, objects, -var.PLAYER_VELOCITY * 2)
-    collide_right = handle_horizontal_collision(player, objects, var.PLAYER_VELOCITY * 2 )
+    collide_right = handle_horizontal_collision(player, objects, var.PLAYER_VELOCITY * 2)
 
     if keys[pygame.K_LEFT] and not collide_left:
         player.move_left(var.PLAYER_VELOCITY)
     if keys[pygame.K_RIGHT] and not collide_right:
         player.move_right(var.PLAYER_VELOCITY)
 
-    handle_vertical_collision(player, objects, player.y_velocity)
+    vertical_collide = handle_vertical_collision(player, objects, player.y_velocity)
+    to_check = [collide_left, collide_right, *vertical_collide]
+    for obj in to_check:
+        if obj and obj.name == "fire":
+            player.make_hit()
 
 
 def main(window):
