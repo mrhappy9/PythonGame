@@ -220,13 +220,36 @@ def handle_vertical_collision(player, objects, dy):
     return collided_objects
 
 
+# horizontal collision
+def handle_horizontal_collision(player, objects, dx):
+    """
+    1) player is trying move on the x direction
+    2) after moving here is updating mask
+    3) if there is exist collide mask between player and obj -> return player back on dx
+    """
+    player.move(dx, 0)
+    player.update()
+    collided_object = None
+    for obj in objects:
+        if pygame.sprite.collide_mask(player, obj):
+            collided_object = obj
+            break
+
+    player.move(-dx, 0)
+    player.update()
+    return collided_object
+
+
 def handle_move(player, objects):
     keys = pygame.key.get_pressed()
 
     player.x_velocity = 0
-    if keys[pygame.K_LEFT]:
+    collide_left = handle_horizontal_collision(player, objects, -var.PLAYER_VELOCITY * 2)
+    collide_right = handle_horizontal_collision(player, objects, var.PLAYER_VELOCITY * 2 )
+
+    if keys[pygame.K_LEFT] and not collide_left:
         player.move_left(var.PLAYER_VELOCITY)
-    if keys[pygame.K_RIGHT]:
+    if keys[pygame.K_RIGHT] and not collide_right:
         player.move_right(var.PLAYER_VELOCITY)
 
     handle_vertical_collision(player, objects, player.y_velocity)
@@ -239,11 +262,18 @@ def main(window):
 
     player = Player(100, 100, 50, 50)
 
-    # creating random amount of blocks
+    # creating blocks for vertical collision
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
-    random_block = [Block(i * var.BLOCK_SIZE, random.randint(100, 600), var.BLOCK_SIZE)
-                    for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
+
+    # creating blocks for horizontal collision
+    random_block = [Block(i * var.BLOCK_SIZE, random.randint(200, 400), var.BLOCK_SIZE)
+                    for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 4)]
+    random_block_second = [Block(i * var.BLOCK_SIZE, random.randint(200, 400), var.BLOCK_SIZE)
+                    for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 9)]
+
+    # list with blocks for horizontal and vertical collision
+    objects_blocks = [*blocks_floor, *random_block, *random_block_second]
 
     offset_x = 0
     scroll_area_width = 400
@@ -268,8 +298,8 @@ def main(window):
             #     player.acceleration(var.ACCELERATION_VELOCITY_RATIO)
 
         player.loop(var.FPS)
-        handle_move(player, blocks_floor)
-        draw(window, background, bg_image, player, blocks_floor, offset_x)
+        handle_move(player, objects_blocks)
+        draw(window, background, bg_image, player, objects_blocks, offset_x)
 
         # scrolling backgrounds
         if ((player.rect.right - offset_x >= var.WIDTH - scroll_area_width and player.x_velocity > 0) or
