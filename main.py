@@ -68,6 +68,7 @@ class Player(pygame.sprite.Sprite):
         self.animation_count = 0
         self.fall_count = 0
         self.jump_count = 0
+        self.acceleration_count = 0
         self.hit = False
         self.hit_count = 0
 
@@ -94,6 +95,11 @@ class Player(pygame.sprite.Sprite):
             self.direction = "right"
             self.animation_count = 0
 
+    def acceleration(self):
+        print(self.x_velocity)
+        self.x_velocity *= var.ACCELERATION_VELOCITY_RATIO
+        self.acceleration_count += 1
+
     def loop(self, fps):
         # define the acceleration by using fall_count and Gravity value
         self.y_velocity += min(1, (self.fall_count / fps) * self.GRAVITY)
@@ -107,6 +113,7 @@ class Player(pygame.sprite.Sprite):
         self.fall_count = 0
         self.y_velocity = 0
         self.jump_count = 0
+        self.acceleration_count = 0
 
     # creating hit_head method for collided two objects
     def hit_head(self):
@@ -142,8 +149,8 @@ class Player(pygame.sprite.Sprite):
         # mask is mapping of all of the pixels that exist in the Sprite
         self.mask = pygame.mask.from_surface(self.sprite)
 
-    def draw(self, window):
-        window.blit(self.sprite, (self.rect.x, self.rect.y))
+    def draw(self, window, offset_x):
+        window.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
 
 
 # generating objects on the map
@@ -156,8 +163,8 @@ class Object(pygame.sprite.Sprite):
         self.height = height
         self.name = name
 
-    def draw(self, window):
-        window.blit(self.image, (self.rect.x, self.rect.y))
+    def draw(self, window, offset_x):
+        window.blit(self.image, (self.rect.x - offset_x, self.rect.y))
 
 
 # inhering from Object class
@@ -184,16 +191,16 @@ def generate_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player, objects):
+def draw(window, background, bg_image, player, objects, offset_x):
     # drawing each tile by using its position from list of tuples 'background' including positions
     for tile in background:
         window.blit(bg_image, tile)
 
     # drawing objects from terrain folder
     for obj in objects:
-        obj.draw(window)
+        obj.draw(window, offset_x)
 
-    player.draw(window)
+    player.draw(window, offset_x)
 
     pygame.display.update()
 
@@ -235,6 +242,11 @@ def main(window):
     # creating random amount of blocks
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
+    random_block = [Block(i * var.BLOCK_SIZE, random.randint(100, 600), var.BLOCK_SIZE)
+                    for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
+
+    offset_x = 0
+    scroll_area_width = 400
 
     run = True
     while run:
@@ -246,14 +258,27 @@ def main(window):
                 run = False
                 break
 
-            # double hero jumping realisation
+            # hero double jumping and acceleration realisation
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and player.jump_count < 3:
                     player.jump()
+                if event.key == pygame.K_a and player.acceleration_count < 2:
+                    player.acceleration()
+            # if keys[pygame.K_a]:
+            #     player.acceleration(var.ACCELERATION_VELOCITY_RATIO)
 
         player.loop(var.FPS)
         handle_move(player, blocks_floor)
-        draw(window, background, bg_image, player, blocks_floor)
+        draw(window, background, bg_image, player, blocks_floor, offset_x)
+
+        # scrolling backgrounds
+        if ((player.rect.right - offset_x >= var.WIDTH - scroll_area_width and player.x_velocity > 0) or
+                (player.rect.left - offset_x <= scroll_area_width and player.x_velocity < 0)):
+            if player.acceleration_count == 0:
+                offset_x += player.x_velocity
+            else:
+                offset_x += player.x_velocity * var.ACCELERATION_VELOCITY_RATIO
+
     pygame.quit()
     quit()
 
