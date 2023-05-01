@@ -24,3 +24,5 @@ TERRAIN_PNG = "Terrain.png"
 
 FIRE_OBJECT_NAME = "fire"
 FRUIT_OBJECT_NAME = "fruit"
+
+ARRAY_OF_ALL_FRUITS = ["Apple", "Bananas", "Cherries", "Kiwi", "Melon", "Orange", "Pineapple", "Strawberry"]
