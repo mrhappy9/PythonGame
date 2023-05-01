@@ -55,10 +55,10 @@ def get_block(size):
 class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
-    SPRITES = load_sprite_sheets(var.MAIN_CHARACTER_FOLDER_NAME, var.MASK_DUDE_HERO, var.DEPTH, var.DEPTH, True)
+    SPRITES = load_sprite_sheets(var.MAIN_CHARACTER_FOLDER_NAME, var.NINJA_FROG_HERO, var.DEPTH, var.DEPTH, True)
     ANIMATION_DELAY = 3
 
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, hp=100):
         super().__init__()
         self.rect = pygame.Rect(x, y, width, height)
         self.x_velocity = 0
@@ -71,6 +71,7 @@ class Player(pygame.sprite.Sprite):
         self.acceleration_count = 0
         self.hit = False
         self.hit_count = 0
+        self.hp_count = hp
 
     def jump(self):
         self.y_velocity = -self.GRAVITY * 8
@@ -79,9 +80,20 @@ class Player(pygame.sprite.Sprite):
         if self.jump_count == 1:
             self.fall_count = 0
 
-    def make_hit(self):
+    def show_hp(self):
+        font = pygame.font.Font("freesansbold.ttf", 24)
+        return font.render("HP: " + str(self.hp_count), True, (255, 255, 255))
+
+    def make_hit(self, name_object):
         self.hit = True
         self.hit_count = 0
+
+        # decreasing hero hp from fire
+        if name_object == var.FIRE_OBJECT_NAME:
+            self.hp_count -= 1
+
+    def store_fruit(self):
+        self.hp_count += 1
 
     def move(self, dx, dy):
         self.rect.x += dx
@@ -100,7 +112,6 @@ class Player(pygame.sprite.Sprite):
             self.animation_count = 0
 
     def acceleration(self):
-        print(self.x_velocity)
         self.x_velocity *= var.ACCELERATION_VELOCITY_RATIO
         self.acceleration_count += 1
 
@@ -163,6 +174,7 @@ class Player(pygame.sprite.Sprite):
 
     def draw(self, window, offset_x):
         window.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
+        window.blit(self.show_hp(), (10, 10))
 
 
 # generating objects on the map
@@ -190,15 +202,15 @@ class Block(Object):
 
 # creating fire class inhering from Object
 class Fire(Object):
-    ANIMATION_DELAY = 4
+    ANIMATION_DELAY = 3
 
     def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height, "fire")
+        super().__init__(x, y, width, height, var.FIRE_OBJECT_NAME)
         self.fire = load_sprite_sheets(var.TRAPS_FOLDER_NAME, var.FIRE_FOLDER_NAME, width, height)
         self.image = self.fire["off"][0]
         self.mask = pygame.mask.from_surface(self.image)
         self.animation_count = 0
-        self.animation_name = "off"
+        self.animation_name = "on"
 
     def on(self):
         self.animation_name = "on"
@@ -208,6 +220,32 @@ class Fire(Object):
 
     def loop(self):
         sprites = self.fire[self.animation_name]
+
+        # picking a new index of every animation frames from our sprites dynamically
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
+        self.image = sprites[sprite_index]
+        self.animation_count += 1
+        self.rect = self.image.get_rect(topleft=(self.rect.x, self.rect.y))
+        self.mask = pygame.mask.from_surface(self.image)
+
+        if self.animation_count // self.ANIMATION_DELAY > len(sprites):
+            self.animation_count = 0
+
+
+# creating Fruit class inhering from Object
+class Fruit(Object):
+    ANIMATION_DELAY = 3
+
+    def __init__(self, x, y, width, height, fruit_name="Apple"):
+        super().__init__(x, y, width, height, var.FRUIT_OBJECT_NAME)
+        self.fruit = load_sprite_sheets(var.ITEMS_FOLDER_NAME, var.FRUIT_FOLDER_NAME, width, height)
+        self.image = self.fruit[fruit_name][0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.animation_count = 0
+        self.fruit_name = fruit_name
+
+    def loop(self):
+        sprites = self.fruit[self.fruit_name]
 
         # picking a new index of every animation frames from our sprites dynamically
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
@@ -299,8 +337,10 @@ def handle_move(player, objects):
     vertical_collide = handle_vertical_collision(player, objects, player.y_velocity)
     to_check = [collide_left, collide_right, *vertical_collide]
     for obj in to_check:
-        if obj and obj.name == "fire":
-            player.make_hit()
+        if obj and obj.name == var.FIRE_OBJECT_NAME:
+            player.make_hit(var.FIRE_OBJECT_NAME)
+        if obj and obj.name == var.FRUIT_OBJECT_NAME:
+            player.store_fruit()
 
 
 def main(window):
@@ -310,20 +350,27 @@ def main(window):
 
     player = Player(100, 100, 50, 50)
     fire = Fire(100, var.HEIGHT - var.BLOCK_SIZE - 64, 16, 32)
-    fire.on()
+    apple_fruit = Fruit(150, var.HEIGHT - var.BLOCK_SIZE - 64, 32, 32, "Kiwi")
+
+    # fire_blocks = [Fire(i * var.BLOCK_SIZE + var.BLOCK_SIZE//2, var.HEIGHT - var.BLOCK_SIZE, 16, 32)
+    #                for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
 
     # creating blocks for vertical collision
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
 
+    # creating fire blocks on each terrain blocks
+    fire_blocks = [Fire(x * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE - 64, 16, 36)
+                   for x in range(-1000, len(blocks_floor), 5)]
+
     # creating blocks for horizontal collision
     random_block = [Block(i * var.BLOCK_SIZE, random.randint(200, 400), var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 4)]
     random_block_second = [Block(i * var.BLOCK_SIZE, random.randint(200, 400), var.BLOCK_SIZE)
-                    for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 9)]
+                           for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 9)]
 
     # list with blocks for horizontal and vertical collision
-    objects_blocks = [*blocks_floor, *random_block, *random_block_second, fire]
+    objects_blocks = [*blocks_floor, *random_block, *random_block_second, fire, *fire_blocks, apple_fruit]
 
     offset_x = 0
     scroll_area_width = 400
@@ -348,7 +395,9 @@ def main(window):
             #     player.acceleration(var.ACCELERATION_VELOCITY_RATIO)
 
         player.loop(var.FPS)
-        fire.loop()
+        for fire in fire_blocks:
+            fire.loop()
+        apple_fruit.loop()
         handle_move(player, objects_blocks)
         draw(window, background, bg_image, player, objects_blocks, offset_x)
 
