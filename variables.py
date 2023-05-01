@@ -4,6 +4,7 @@ FPS = 60
 PLAYER_VELOCITY = 5
 DEPTH = 32
 BLOCK_SIZE = 96
+ACCELERATION_VELOCITY_RATIO = 10
 
 ARRAY_OF_ALL_BG_TILES = ["Blue.png", "Brown.png", "Gray.png", "Pink.png",
                          "Purple.png", "Yellow.png"]
