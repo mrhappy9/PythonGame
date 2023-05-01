@@ -11,6 +11,8 @@ ARRAY_OF_ALL_BG_TILES = ["Blue.png", "Brown.png", "Gray.png", "Pink.png",
 ASSETS_FOLDER_NAME = "assets"
 BACKGROUND_FOLDER_NAME = "Background"
 MAIN_CHARACTER_FOLDER_NAME = "MainCharacters"
+TRAPS_FOLDER_NAME = "Traps"
+FIRE_FOLDER_NAME = "Fire"
 
 MASK_DUDE_HERO = "MaskDude"
 

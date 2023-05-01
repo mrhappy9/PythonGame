@@ -176,6 +176,39 @@ class Block(Object):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+# creating fire class inhering from Object
+class Fire(Object):
+    ANIMATION_DELAY = 4
+
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height, "fire")
+        self.fire = load_sprite_sheets(var.TRAPS_FOLDER_NAME, var.FIRE_FOLDER_NAME, width, height)
+        self.image = self.fire["off"][0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.animation_count = 0
+        self.animation_name = "off"
+
+    def on(self):
+        self.animation_name = "on"
+
+    def off(self):
+        self.animation_name = "off"
+
+    def loop(self):
+        sprites = self.fire[self.animation_name]
+
+        # picking a new index of every animation frames from our sprites dynamically
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
+        self.image = sprites[sprite_index]
+        self.animation_count += 1
+        self.rect = self.image.get_rect(topleft=(self.rect.x, self.rect.y))
+        # mask is mapping of all of the pixels that exist in the Sprite
+        self.mask = pygame.mask.from_surface(self.image)
+
+        if self.animation_count // self.ANIMATION_DELAY > len(sprites):
+            self.animation_count = 0
+
+
 # generating the background
 def generate_background(name):
     image = pygame.image.load(join(var.ASSETS_FOLDER_NAME, var.BACKGROUND_FOLDER_NAME, name))
@@ -261,6 +294,8 @@ def main(window):
     background, bg_image = generate_background(var.ARRAY_OF_ALL_BG_TILES[random_image_id])
 
     player = Player(100, 100, 50, 50)
+    fire = Fire(100, var.HEIGHT - var.BLOCK_SIZE - 64, 16, 32)
+    fire.on()
 
     # creating blocks for vertical collision
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
@@ -273,7 +308,7 @@ def main(window):
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 9)]
 
     # list with blocks for horizontal and vertical collision
-    objects_blocks = [*blocks_floor, *random_block, *random_block_second]
+    objects_blocks = [*blocks_floor, *random_block, *random_block_second, fire]
 
     offset_x = 0
     scroll_area_width = 400
@@ -298,6 +333,7 @@ def main(window):
             #     player.acceleration(var.ACCELERATION_VELOCITY_RATIO)
 
         player.loop(var.FPS)
+        fire.loop()
         handle_move(player, objects_blocks)
         draw(window, background, bg_image, player, objects_blocks, offset_x)
 
