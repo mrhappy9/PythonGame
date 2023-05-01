@@ -72,6 +72,7 @@ class Player(pygame.sprite.Sprite):
         self.hit = False
         self.hit_count = 0
         self.hp_count = hp
+        self.collect_fruit = {}
 
     def jump(self):
         self.y_velocity = -self.GRAVITY * 8
@@ -84,6 +85,14 @@ class Player(pygame.sprite.Sprite):
         font = pygame.font.Font("freesansbold.ttf", 24)
         return font.render("HP: " + str(self.hp_count), True, (255, 255, 255))
 
+    def show_inventory(self):
+        font = pygame.font.Font("freesansbold.ttf", 24)
+        result = ""
+        for fruit in self.collect_fruit:
+            result += "{}: {} | ".format(fruit, self.collect_fruit[fruit])
+
+        return font.render(result, True, (255, 255, 255))
+
     def make_hit(self, name_object):
         self.hit = True
         self.hit_count = 0
@@ -92,8 +101,12 @@ class Player(pygame.sprite.Sprite):
         if name_object == var.FIRE_OBJECT_NAME:
             self.hp_count -= 1
 
-    def store_fruit(self):
-        self.hp_count += 1
+    def store_fruit(self, collided_object):
+        self.hp_count += 20
+        if collided_object.fruit_name in self.collect_fruit.keys():
+            self.collect_fruit[str(collided_object.fruit_name)] += 1
+        else:
+            self.collect_fruit[str(collided_object.fruit_name)] = 1
 
     def move(self, dx, dy):
         self.rect.x += dx
@@ -125,6 +138,8 @@ class Player(pygame.sprite.Sprite):
         if self.hit_count > var.FPS * 2:
             self.hit = False
             self.hit_count = 0
+        if self.hp_count == 0:
+            self.remove()
 
         self.fall_count += 1
         self.update_sprite()
@@ -175,6 +190,7 @@ class Player(pygame.sprite.Sprite):
     def draw(self, window, offset_x):
         window.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
         window.blit(self.show_hp(), (10, 10))
+        window.blit(self.show_inventory(), (10, 30))
 
 
 # generating objects on the map
@@ -273,16 +289,18 @@ def generate_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player, objects, offset_x):
+def draw(window, background, bg_image, player, objects_blocks, offset_x):
     # drawing each tile by using its position from list of tuples 'background' including positions
     for tile in background:
         window.blit(bg_image, tile)
 
     # drawing objects from terrain folder
-    for obj in objects:
+    for obj in objects_blocks:
         obj.draw(window, offset_x)
 
-    player.draw(window, offset_x)
+    # adding disappearing hero when hp_count <= 0
+    if player.hp_count > 0:
+        player.draw(window, offset_x)
 
     pygame.display.update()
 
@@ -322,25 +340,29 @@ def handle_horizontal_collision(player, objects, dx):
     return collided_object
 
 
-def handle_move(player, objects):
+def handle_move(player, objects_blocks):
     keys = pygame.key.get_pressed()
 
     player.x_velocity = 0
-    collide_left = handle_horizontal_collision(player, objects, -var.PLAYER_VELOCITY * 2)
-    collide_right = handle_horizontal_collision(player, objects, var.PLAYER_VELOCITY * 2)
+    collide_left = handle_horizontal_collision(player, objects_blocks, -var.PLAYER_VELOCITY * 2)
+    collide_right = handle_horizontal_collision(player, objects_blocks, var.PLAYER_VELOCITY * 2)
 
     if keys[pygame.K_LEFT] and not collide_left:
         player.move_left(var.PLAYER_VELOCITY)
     if keys[pygame.K_RIGHT] and not collide_right:
         player.move_right(var.PLAYER_VELOCITY)
 
-    vertical_collide = handle_vertical_collision(player, objects, player.y_velocity)
+    vertical_collide = handle_vertical_collision(player, objects_blocks, player.y_velocity)
     to_check = [collide_left, collide_right, *vertical_collide]
     for obj in to_check:
         if obj and obj.name == var.FIRE_OBJECT_NAME:
             player.make_hit(var.FIRE_OBJECT_NAME)
         if obj and obj.name == var.FRUIT_OBJECT_NAME:
-            player.store_fruit()
+            # collect fruit and remove fruit from map
+            player.store_fruit(obj)
+            if obj in objects_blocks:
+                objects_blocks.remove(obj)
+    return objects_blocks
 
 
 def main(window):
@@ -352,9 +374,6 @@ def main(window):
     fire = Fire(100, var.HEIGHT - var.BLOCK_SIZE - 64, 16, 32)
     apple_fruit = Fruit(150, var.HEIGHT - var.BLOCK_SIZE - 64, 32, 32, "Kiwi")
 
-    # fire_blocks = [Fire(i * var.BLOCK_SIZE + var.BLOCK_SIZE//2, var.HEIGHT - var.BLOCK_SIZE, 16, 32)
-    #                for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
-
     # creating blocks for vertical collision
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE)]
@@ -363,6 +382,11 @@ def main(window):
     fire_blocks = [Fire(x * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE - 64, 16, 36)
                    for x in range(-1000, len(blocks_floor), 5)]
 
+    # creating fruit blocks
+    fruit_blocks = [Fruit(x * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE - random.randint(100, 600), 32, 32,
+                          var.ARRAY_OF_ALL_FRUITS[random.randint(0, len(var.ARRAY_OF_ALL_FRUITS) - 1)])
+                    for x in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 3)]
+
     # creating blocks for horizontal collision
     random_block = [Block(i * var.BLOCK_SIZE, random.randint(200, 400), var.BLOCK_SIZE)
                     for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 4)]
@@ -370,7 +394,8 @@ def main(window):
                            for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 9)]
 
     # list with blocks for horizontal and vertical collision
-    objects_blocks = [*blocks_floor, *random_block, *random_block_second, fire, *fire_blocks, apple_fruit]
+    objects_blocks = [*blocks_floor, *random_block, *random_block_second, fire, *fire_blocks,
+                      *fruit_blocks]
 
     offset_x = 0
     scroll_area_width = 400
@@ -397,8 +422,10 @@ def main(window):
         player.loop(var.FPS)
         for fire in fire_blocks:
             fire.loop()
-        apple_fruit.loop()
-        handle_move(player, objects_blocks)
+        for fruit in fruit_blocks:
+            fruit.loop()
+
+        objects_blocks = handle_move(player, objects_blocks)
         draw(window, background, bg_image, player, objects_blocks, offset_x)
 
         # scrolling backgrounds
