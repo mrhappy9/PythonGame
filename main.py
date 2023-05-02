@@ -4,6 +4,54 @@ import variables as var
 from os import listdir
 from os.path import isfile, join
 
+
+# checking that the hero's hp value is entered correctly
+def correct_hp_inputting(value):
+    if value.isdigit() and int(value) in [x for x in range(50, 251)]:
+        return True, int(value)
+    else:
+        print("Your written value is '{}'".format(value),
+              "You have to enter an integer value from the following interval: [50, 250]", sep='\n')
+        return False, None
+
+
+# checking that the hero type value is entered correctly
+def correct_hero_type_inputting(value):
+    if value.isdigit() and int(value) in [x for x in range(1, 5)]:
+        return True, int(value)
+    else:
+        print("Your written value is '{}'".format(value),
+              "You have to enter an integer value from the following interval: [1, 4]", sep='\n')
+        return False, None
+
+
+# inputting the first parameters
+def input_value():
+    print("Hello!",
+          "Some info about the game bellow:",
+          " 1) You can collect fruits, each fruit you collected gives 20 HP (health point);",
+          " 2) You have to avoid monsters, as when you meet them, you will lose 10 HP;",
+          " 3) You can protect yourself from the monster by pressing the 'R' button next to it;",
+          " 4) You can kill the monster by pressing the 'T' button next to it;",
+          " 5) The amount of health, each harvested fruit and killed monsters will be displayed "
+          "in the upper left corner.\n",
+          "Before starts the game enter the next parameters:", sep="\n")
+    while True:
+        hp = input("Set hero's HP from interval [50; 200]: ")
+        if correct_hp_inputting(hp)[0]:
+            hp = correct_hp_inputting(hp)[1]
+            break
+
+    while True:
+        hero_type = input("Choose the hero type: 1 - MaskDude, 2 - NinjaFrog, 3 - PinkMan, 4 - VirtualGuy: ")
+        if correct_hero_type_inputting(hero_type)[0]:
+            hero_type = correct_hero_type_inputting(hero_type)[1]
+            break
+
+    return hp, hero_type - 1
+
+
+HERO_HP, HERO_TYPE = input_value()
 pygame.init()
 
 pygame.display.set_caption("PyGame")
@@ -52,7 +100,7 @@ def get_block(size):
 class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
-    SPRITES = load_sprite_sheets(var.MAIN_CHARACTER_FOLDER_NAME, var.NINJA_FROG_HERO, var.DEPTH, var.DEPTH, True)
+    SPRITES = load_sprite_sheets(var.MAIN_CHARACTER_FOLDER_NAME, var.ARRAY_OF_ALL_HERO_TYPE[HERO_TYPE], var.DEPTH, var.DEPTH, True)
     ANIMATION_DELAY = 3
 
     def __init__(self, x, y, width, height, hp=100):
@@ -81,7 +129,8 @@ class Player(pygame.sprite.Sprite):
 
     def show_hp(self):
         font = pygame.font.Font("freesansbold.ttf", 24)
-        return font.render("HP: " + str(self.hp_value), True, (255, 255, 255))
+        result = "HP: " + str(self.hp_value)
+        return font.render(result, True, (255, 255, 255)), result
 
     def show_inventory(self):
         font = pygame.font.Font("freesansbold.ttf", 24)
@@ -89,11 +138,12 @@ class Player(pygame.sprite.Sprite):
         for fruit in self.collect_fruit:
             result += "{}: {} | ".format(fruit, self.collect_fruit[fruit])
 
-        return font.render(result, True, (255, 255, 255))
+        return font.render(result, True, (255, 255, 255)), result
 
     def show_killed_enemy(self):
         font = pygame.font.Font("freesansbold.ttf", 24)
-        return font.render("Killed enemies: " + str(self.killed_enemies), True, (255, 255, 255))
+        result = "Killed enemies: " + str(self.killed_enemies)
+        return font.render(result, True, (255, 255, 255)), result
 
     def make_hit(self, name_object):
         self.hit = True
@@ -104,16 +154,17 @@ class Player(pygame.sprite.Sprite):
             self.hp_value -= 1
 
     def store_fruit(self, collided_object):
-        self.hp_value += 20
+        self.hp_value += var.FRUIT_INCREASE_HP
         if collided_object.fruit_name in self.collect_fruit.keys():
             self.collect_fruit[str(collided_object.fruit_name)] += 1
         else:
             self.collect_fruit[str(collided_object.fruit_name)] = 1
 
-    def enemy_damage(self):
-        self.hit = True
-        self.hit_count = 0
-        self.hp_value -= var.MONSTER_DAMAGE
+    def enemy_damage(self, defend):
+        if defend:
+            self.hit = True
+            self.hit_count = 0
+            self.hp_value -= var.MONSTER_DAMAGE
 
     def kill_enemy(self):
         self.killed_enemies += 1
@@ -199,9 +250,9 @@ class Player(pygame.sprite.Sprite):
 
     def draw(self, window, offset_x):
         window.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
-        window.blit(self.show_hp(), (10, 10))
-        window.blit(self.show_inventory(), (10, 30))
-        window.blit(self.show_killed_enemy(), (10, 50))
+        window.blit(self.show_hp()[0], (10, 10))
+        window.blit(self.show_inventory()[0], (10, 30))
+        window.blit(self.show_killed_enemy()[0], (10, 50))
 
 
 # generating objects on the map
@@ -350,6 +401,8 @@ def draw(window, background, bg_image, player, objects_blocks, offset_x):
     # adding disappearing hero when hp_value <= 0
     if player.hp_value > 0:
         player.draw(window, offset_x)
+    else:
+        pass
 
     pygame.display.update()
 
@@ -394,6 +447,9 @@ def handle_move(player, objects_blocks):
 
     player.x_velocity = 0
 
+    # defending of enemies
+    defend = True
+
     collide_left = handle_horizontal_collision(player, objects_blocks, -var.PLAYER_VELOCITY * 2)
     collide_right = handle_horizontal_collision(player, objects_blocks, var.PLAYER_VELOCITY * 2)
     vertical_collide = handle_vertical_collision(player, objects_blocks, player.y_velocity)
@@ -410,6 +466,8 @@ def handle_move(player, objects_blocks):
         remove_monsters_collide.append(collide_right)
     if keys[pygame.K_t] and vertical_collide and vertical_collide[-1].name == var.MONSTER_OBJECT_NAME:
         remove_monsters_collide.append(vertical_collide[-1])
+    if keys[pygame.K_r]:
+        defend = False
 
     to_check = [collide_left, collide_right, *vertical_collide]
 
@@ -430,7 +488,7 @@ def handle_move(player, objects_blocks):
                 objects_blocks.remove(obj)
         if obj and obj.name == var.MONSTER_OBJECT_NAME:
             # handle fight with monster
-            player.enemy_damage()
+            player.enemy_damage(defend)
     return objects_blocks
 
 
@@ -439,9 +497,7 @@ def main(window):
     random_image_id = random.randint(0, len(var.ARRAY_OF_ALL_BG_TILES) - 1)
     background, bg_image = generate_background(var.ARRAY_OF_ALL_BG_TILES[random_image_id])
 
-    player = Player(100, 100, 50, 50)
-    fire = Fire(100, var.HEIGHT - var.BLOCK_SIZE - 64, 16, 32)
-    enemy = Enemy(200, var.HEIGHT - var.BLOCK_SIZE - 64, 32, 32)
+    player = Player(100, 100, 50, 50, HERO_HP)
 
     # creating blocks for vertical collision
     blocks_floor = [Block(i * var.BLOCK_SIZE, var.HEIGHT - var.BLOCK_SIZE, var.BLOCK_SIZE)
@@ -467,8 +523,8 @@ def main(window):
                            for i in range(-var.WIDTH // var.BLOCK_SIZE, (var.WIDTH * 2) // var.BLOCK_SIZE, 9)]
 
     # list with blocks for horizontal and vertical collision
-    objects_blocks = [*blocks_floor, *random_block, *random_block_second, fire, *fire_blocks,
-                      *fruit_blocks, *enemy_blocks]
+    objects_blocks = [*blocks_floor, *random_block, *random_block_second,
+                      *fire_blocks, *fruit_blocks, *enemy_blocks]
 
     offset_x = 0
     scroll_area_width = 400
@@ -514,6 +570,14 @@ def main(window):
         side_going_monster += 1
         if side_going_monster > 3:
             side_going_monster = 0
+
+        # stop game
+        if player.hp_value <= 0:
+            print("\nGame over",
+                  "Your statistic show below:\n", sep='\n')
+            print(player.show_inventory()[1])
+            print(player.show_killed_enemy()[1])
+            break
 
     pygame.quit()
     quit()
