@@ -7,6 +7,7 @@ BLOCK_SIZE = 96
 ACCELERATION_VELOCITY_RATIO = 10
 MONSTER_SPEED = 20
 MONSTER_DAMAGE = 10
+FRUIT_INCREASE_HP = 20
 
 ARRAY_OF_ALL_BG_TILES = ["Blue.png", "Brown.png", "Gray.png", "Pink.png",
                          "Purple.png", "Yellow.png"]
@@ -23,6 +24,10 @@ CYCLOPS_FOLDER_NAME = "Cyclops"
 
 MASK_DUDE_HERO = "MaskDude"
 NINJA_FROG_HERO = "NinjaFrog"
+PINK_MAN_HERO = "PinkMan"
+VIRTUAL_GUY_HERO = "VirtualGuy"
+
+ARRAY_OF_ALL_HERO_TYPE = [MASK_DUDE_HERO, NINJA_FROG_HERO, PINK_MAN_HERO, VIRTUAL_GUY_HERO]
 
 TERRAIN = "Terrain"
 TERRAIN_PNG = "Terrain.png"
