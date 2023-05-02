@@ -431,8 +431,6 @@ def handle_move(player, objects_blocks):
         if obj and obj.name == var.MONSTER_OBJECT_NAME:
             # handle fight with monster
             player.enemy_damage()
-            # if obj in objects_blocks:
-            #     objects_blocks.remove(obj)
     return objects_blocks
 
 
