@@ -68,8 +68,9 @@ class Player(pygame.sprite.Sprite):
         self.acceleration_count = 0
         self.hit = False
         self.hit_count = 0
-        self.hp_count = hp
+        self.hp_value = hp
         self.collect_fruit = {}
+        self.killed_enemies = 0
 
     def jump(self):
         self.y_velocity = -self.GRAVITY * 8
@@ -80,7 +81,7 @@ class Player(pygame.sprite.Sprite):
 
     def show_hp(self):
         font = pygame.font.Font("freesansbold.ttf", 24)
-        return font.render("HP: " + str(self.hp_count), True, (255, 255, 255))
+        return font.render("HP: " + str(self.hp_value), True, (255, 255, 255))
 
     def show_inventory(self):
         font = pygame.font.Font("freesansbold.ttf", 24)
@@ -90,23 +91,32 @@ class Player(pygame.sprite.Sprite):
 
         return font.render(result, True, (255, 255, 255))
 
+    def show_killed_enemy(self):
+        font = pygame.font.Font("freesansbold.ttf", 24)
+        return font.render("Killed enemies: " + str(self.killed_enemies), True, (255, 255, 255))
+
     def make_hit(self, name_object):
         self.hit = True
         self.hit_count = 0
 
         # decreasing hero hp from fire
         if name_object == var.FIRE_OBJECT_NAME:
-            self.hp_count -= 1
+            self.hp_value -= 1
 
     def store_fruit(self, collided_object):
-        self.hp_count += 20
+        self.hp_value += 20
         if collided_object.fruit_name in self.collect_fruit.keys():
             self.collect_fruit[str(collided_object.fruit_name)] += 1
         else:
             self.collect_fruit[str(collided_object.fruit_name)] = 1
 
     def enemy_damage(self):
-        self.hp_count -= var.MONSTER_DAMAGE
+        self.hit = True
+        self.hit_count = 0
+        self.hp_value -= var.MONSTER_DAMAGE
+
+    def kill_enemy(self):
+        self.killed_enemies += 1
 
     def move(self, dx, dy):
         self.rect.x += dx
@@ -138,7 +148,7 @@ class Player(pygame.sprite.Sprite):
         if self.hit_count > var.FPS * 2:
             self.hit = False
             self.hit_count = 0
-        if self.hp_count == 0:
+        if self.hp_value == 0:
             self.remove()
 
         self.fall_count += 1
@@ -191,6 +201,7 @@ class Player(pygame.sprite.Sprite):
         window.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
         window.blit(self.show_hp(), (10, 10))
         window.blit(self.show_inventory(), (10, 30))
+        window.blit(self.show_killed_enemy(), (10, 50))
 
 
 # generating objects on the map
@@ -336,8 +347,8 @@ def draw(window, background, bg_image, player, objects_blocks, offset_x):
     for obj in objects_blocks:
         obj.draw(window, offset_x)
 
-    # adding disappearing hero when hp_count <= 0
-    if player.hp_count > 0:
+    # adding disappearing hero when hp_value <= 0
+    if player.hp_value > 0:
         player.draw(window, offset_x)
 
     pygame.display.update()
@@ -382,16 +393,33 @@ def handle_move(player, objects_blocks):
     keys = pygame.key.get_pressed()
 
     player.x_velocity = 0
+
     collide_left = handle_horizontal_collision(player, objects_blocks, -var.PLAYER_VELOCITY * 2)
     collide_right = handle_horizontal_collision(player, objects_blocks, var.PLAYER_VELOCITY * 2)
+    vertical_collide = handle_vertical_collision(player, objects_blocks, player.y_velocity)
+
+    remove_monsters_collide = []
 
     if keys[pygame.K_LEFT] and not collide_left:
         player.move_left(var.PLAYER_VELOCITY)
     if keys[pygame.K_RIGHT] and not collide_right:
         player.move_right(var.PLAYER_VELOCITY)
+    if keys[pygame.K_t] and collide_left and collide_left.name == var.MONSTER_OBJECT_NAME:
+        remove_monsters_collide.append(collide_left)
+    if keys[pygame.K_t] and collide_right and collide_right.name == var.MONSTER_OBJECT_NAME:
+        remove_monsters_collide.append(collide_right)
+    if keys[pygame.K_t] and vertical_collide and vertical_collide[-1].name == var.MONSTER_OBJECT_NAME:
+        remove_monsters_collide.append(vertical_collide[-1])
 
-    vertical_collide = handle_vertical_collision(player, objects_blocks, player.y_velocity)
     to_check = [collide_left, collide_right, *vertical_collide]
+
+    # killing monster by pressing "T" key, for horizontal and vertical collisions
+    if remove_monsters_collide:
+        for monster_collide in remove_monsters_collide:
+            if monster_collide in objects_blocks:
+                objects_blocks.remove(monster_collide)
+                player.kill_enemy()
+
     for obj in to_check:
         if obj and obj.name == var.FIRE_OBJECT_NAME:
             player.make_hit(var.FIRE_OBJECT_NAME)
@@ -403,8 +431,6 @@ def handle_move(player, objects_blocks):
         if obj and obj.name == var.MONSTER_OBJECT_NAME:
             # handle fight with monster
             player.enemy_damage()
-            if obj in objects_blocks:
-                objects_blocks.remove(obj)
     return objects_blocks
 
 
