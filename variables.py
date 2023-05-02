@@ -6,7 +6,7 @@ DEPTH = 32
 BLOCK_SIZE = 96
 ACCELERATION_VELOCITY_RATIO = 10
 MONSTER_SPEED = 20
-MONSTER_DAMAGE = 70
+MONSTER_DAMAGE = 10
 
 ARRAY_OF_ALL_BG_TILES = ["Blue.png", "Brown.png", "Gray.png", "Pink.png",
                          "Purple.png", "Yellow.png"]
@@ -39,3 +39,6 @@ MONSTER_RIGHT = "right"
 MONSTER_DOWN = "down"
 
 ARRAY_OF_MONSTER_GOING = [MONSTER_UP, MONSTER_LEFT, MONSTER_RIGHT, MONSTER_DOWN]
+
+LEFT_COLLIDE = "left"
+RIGHT_COLLIDE = "right"
